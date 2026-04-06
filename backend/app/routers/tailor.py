@@ -115,7 +115,7 @@ async def export_resume_pdf(request: TailorRequest, user: dict = Depends(get_cur
     """Export a tailored resume as PDF (returns base64-encoded)."""
     import traceback
     try:
-        pdf_bytes = export_resume_to_pdf(request.resume_text)
+        pdf_bytes = export_resume_to_pdf(request.resume_text, request.template or "classic")
         return JSONResponse(content={
             "data": base64.b64encode(pdf_bytes).decode("utf-8"),
             "filename": "tailored_resume.pdf",

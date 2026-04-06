@@ -9,6 +9,7 @@ export default function TailorPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('resume')
+  const [selectedTemplate, setSelectedTemplate] = useState('classic')
   const fileRef = useRef()
 
   const handleFileUpload = async (e) => {
@@ -55,7 +56,7 @@ export default function TailorPage() {
     try {
       const text = type === 'resume' ? result.tailored_resume : result.cover_letter
       const res = type === 'resume'
-        ? await api.exportResumePdf({ resume_text: text, job_description: '' })
+        ? await api.exportResumePdf({ resume_text: text, job_description: '', template: selectedTemplate })
         : await api.exportCoverLetterPdf({ resume_text: '', job_description: text })
 
       // Decode base64 PDF data
@@ -181,15 +182,49 @@ export default function TailorPage() {
                 <div className="result-section">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <h3>Tailored Resume</h3>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <button className="copy-btn" onClick={() => copyToClipboard(result.tailored_resume)}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                         Copy
                       </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => handleExportPdf('resume')}>Export PDF</button>
                     </div>
                   </div>
                   <div className="result-content">{result.tailored_resume}</div>
+
+                  {/* Template Selector + Export */}
+                  <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Choose PDF Template</label>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      {[
+                        { id: 'classic', name: 'Classic', desc: 'Traditional, clean lines' },
+                        { id: 'modern', name: 'Modern', desc: 'Bold accent colors' },
+                        { id: 'minimal', name: 'Minimal', desc: 'Clean, lots of whitespace' },
+                      ].map(tmpl => (
+                        <button
+                          key={tmpl.id}
+                          onClick={() => setSelectedTemplate(tmpl.id)}
+                          style={{
+                            flex: 1,
+                            padding: '12px 10px',
+                            background: selectedTemplate === tmpl.id ? 'var(--primary)' : 'var(--bg-input)',
+                            border: selectedTemplate === tmpl.id ? '2px solid var(--primary-light)' : '2px solid var(--border)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: selectedTemplate === tmpl.id ? 'white' : 'var(--text)',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{tmpl.name}</div>
+                          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{tmpl.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => handleExportPdf('resume')}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download Resume PDF
+                    </button>
+                  </div>
                 </div>
               )}
 

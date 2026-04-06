@@ -18,6 +18,7 @@ class TailorRequest(BaseModel):
     resume_text: str
     job_description: str
     resume_id: Optional[str] = None
+    template: Optional[str] = "classic"
 
 
 class TailorResult(BaseModel):
