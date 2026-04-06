@@ -113,6 +113,7 @@ async def get_tailor_history(user: dict = Depends(get_current_user)):
 @router.post("/export/resume-pdf")
 async def export_resume_pdf(request: TailorRequest, user: dict = Depends(get_current_user)):
     """Export a tailored resume as PDF (returns base64-encoded)."""
+    import traceback
     try:
         pdf_bytes = export_resume_to_pdf(request.resume_text)
         return JSONResponse(content={
@@ -120,12 +121,14 @@ async def export_resume_pdf(request: TailorRequest, user: dict = Depends(get_cur
             "filename": "tailored_resume.pdf",
         })
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
 @router.post("/export/cover-letter-pdf")
 async def export_cover_letter_pdf(request: TailorRequest, user: dict = Depends(get_current_user)):
     """Export a cover letter as PDF (returns base64-encoded)."""
+    import traceback
     try:
         pdf_bytes = export_cover_letter_to_pdf(request.job_description)
         return JSONResponse(content={
@@ -133,6 +136,7 @@ async def export_cover_letter_pdf(request: TailorRequest, user: dict = Depends(g
             "filename": "cover_letter.pdf",
         })
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
