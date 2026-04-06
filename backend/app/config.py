@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_monthly: str = ""
     stripe_price_yearly: str = ""
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "https://jobhunt-39d54.web.app"
+    allowed_origins: str = ""  # comma-separated extra origins
 
     class Config:
         env_file = ".env"
