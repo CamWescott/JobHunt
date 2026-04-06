@@ -1,10 +1,14 @@
+import { auth } from './firebase'
+
 const API_BASE = '/api'
 
 async function request(path, options = {}) {
-  const token = localStorage.getItem('access_token')
   const headers = { ...options.headers }
 
-  if (token) {
+  // Get fresh Firebase ID token
+  const currentUser = auth.currentUser
+  if (currentUser) {
+    const token = await currentUser.getIdToken()
     headers['Authorization'] = `Bearer ${token}`
   }
 
@@ -30,9 +34,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  // Auth
-  signUp: (data) => request('/auth/signup', { method: 'POST', body: data }),
-  signIn: (data) => request('/auth/signin', { method: 'POST', body: data }),
+  // Auth (verify token with backend)
+  getMe: () => request('/auth/me'),
 
   // Resume
   uploadResume: (file) => {

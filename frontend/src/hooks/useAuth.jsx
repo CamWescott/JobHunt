@@ -1,5 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { api } from '../services/api'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  updateProfile,
+} from 'firebase/auth'
+import { auth } from '../services/firebase'
 
 const AuthContext = createContext(null)
 
@@ -8,38 +17,82 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    const userData = localStorage.getItem('user_data')
-    if (token && userData) {
-      setUser(JSON.parse(userData))
-    }
-    setLoading(false)
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const token = await firebaseUser.getIdToken()
+        setUser({
+          user_id: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          token,
+        })
+      } else {
+        setUser(null)
+      }
+      setLoading(false)
+    })
+
+    return unsubscribe
   }, [])
 
   const signUp = async (email, password, fullName) => {
-    const res = await api.signUp({ email, password, full_name: fullName })
-    localStorage.setItem('access_token', res.access_token)
-    localStorage.setItem('user_data', JSON.stringify(res))
-    setUser(res)
-    return res
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    if (fullName) {
+      await updateProfile(cred.user, { displayName: fullName })
+    }
+    const token = await cred.user.getIdToken()
+    setUser({
+      user_id: cred.user.uid,
+      email: cred.user.email,
+      displayName: fullName || cred.user.displayName,
+      token,
+    })
   }
 
   const signIn = async (email, password) => {
-    const res = await api.signIn({ email, password })
-    localStorage.setItem('access_token', res.access_token)
-    localStorage.setItem('user_data', JSON.stringify(res))
-    setUser(res)
-    return res
+    const cred = await signInWithEmailAndPassword(auth, email, password)
+    const token = await cred.user.getIdToken()
+    setUser({
+      user_id: cred.user.uid,
+      email: cred.user.email,
+      displayName: cred.user.displayName,
+      token,
+    })
   }
 
-  const signOut = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user_data')
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider()
+    const cred = await signInWithPopup(auth, provider)
+    const token = await cred.user.getIdToken()
+    setUser({
+      user_id: cred.user.uid,
+      email: cred.user.email,
+      displayName: cred.user.displayName,
+      token,
+    })
+  }
+
+  const signOut = async () => {
+    await firebaseSignOut(auth)
     setUser(null)
   }
 
+  // Refresh token periodically (Firebase tokens expire after 1 hour)
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(async () => {
+      const currentUser = auth.currentUser
+      if (currentUser) {
+        const token = await currentUser.getIdToken(true)
+        setUser((prev) => (prev ? { ...prev, token } : null))
+      }
+    }, 10 * 60 * 1000) // Refresh every 10 minutes
+
+    return () => clearInterval(interval)
+  }, [user])
+
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   )

@@ -4,24 +4,6 @@ from datetime import datetime
 from enum import Enum
 
 
-# --- Auth ---
-class SignUpRequest(BaseModel):
-    email: str
-    password: str
-    full_name: str = ""
-
-
-class SignInRequest(BaseModel):
-    email: str
-    password: str
-
-
-class AuthResponse(BaseModel):
-    access_token: str
-    user_id: str
-    email: str
-
-
 # --- Resume ---
 class ResumeResponse(BaseModel):
     id: str

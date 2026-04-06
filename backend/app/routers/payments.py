@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.config import get_settings
 from app.models.schemas import CreateCheckoutRequest, SubscriptionStatus
 from app.utils.auth import get_current_user
-from app.services.supabase_client import get_supabase
+from app.services.firebase_client import get_db
 
 router = APIRouter()
 
@@ -44,19 +44,20 @@ async def create_checkout_session(
 @router.get("/status", response_model=SubscriptionStatus)
 async def get_subscription_status(user: dict = Depends(get_current_user)):
     """Get current subscription status."""
-    supabase = get_supabase()
+    db = get_db()
 
     # Check for active subscription
-    sub = (
-        supabase.table("subscriptions")
-        .select("*")
-        .eq("user_id", user["user_id"])
-        .eq("status", "active")
-        .execute()
+    subs = (
+        db.collection("subscriptions")
+        .where("user_id", "==", user["user_id"])
+        .where("status", "==", "active")
+        .limit(1)
+        .stream()
     )
+    sub_list = [doc.to_dict() for doc in subs]
 
-    if sub.data:
-        s = sub.data[0]
+    if sub_list:
+        s = sub_list[0]
         return SubscriptionStatus(
             is_active=True,
             plan=s.get("plan", "pro"),
@@ -69,17 +70,17 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
-    usage = (
-        supabase.table("tailor_results")
-        .select("id", count="exact")
-        .eq("user_id", user["user_id"])
-        .gte("created_at", month_start)
-        .execute()
+    usage_docs = (
+        db.collection("tailor_results")
+        .where("user_id", "==", user["user_id"])
+        .where("created_at", ">=", month_start)
+        .stream()
     )
+    usage_count = sum(1 for _ in usage_docs)
 
     return SubscriptionStatus(
         is_active=False,
-        usage_count=usage.count or 0,
+        usage_count=usage_count,
         usage_limit=3,
     )
 
@@ -100,7 +101,7 @@ async def stripe_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
-    supabase = get_supabase()
+    db = get_db()
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
@@ -109,7 +110,8 @@ async def stripe_webhook(request: Request):
 
         if user_id and subscription_id:
             sub = s.Subscription.retrieve(subscription_id)
-            supabase.table("subscriptions").upsert(
+            # Use user_id as doc ID for easy upsert
+            db.collection("subscriptions").document(user_id).set(
                 {
                     "user_id": user_id,
                     "stripe_subscription_id": subscription_id,
@@ -119,24 +121,37 @@ async def stripe_webhook(request: Request):
                     "current_period_end": datetime.fromtimestamp(
                         sub.current_period_end, tz=timezone.utc
                     ).isoformat(),
-                }
-            ).execute()
+                },
+                merge=True,
+            )
 
     elif event["type"] == "customer.subscription.deleted":
         sub = event["data"]["object"]
-        supabase.table("subscriptions").update({"status": "cancelled"}).eq(
-            "stripe_subscription_id", sub["id"]
-        ).execute()
+        _update_subscription_by_stripe_id(db, sub["id"], {"status": "cancelled"})
 
     elif event["type"] == "customer.subscription.updated":
         sub = event["data"]["object"]
-        supabase.table("subscriptions").update(
+        _update_subscription_by_stripe_id(
+            db,
+            sub["id"],
             {
                 "status": sub["status"],
                 "current_period_end": datetime.fromtimestamp(
                     sub["current_period_end"], tz=timezone.utc
                 ).isoformat(),
-            }
-        ).eq("stripe_subscription_id", sub["id"]).execute()
+            },
+        )
 
     return {"status": "ok"}
+
+
+def _update_subscription_by_stripe_id(db, stripe_sub_id: str, update_data: dict):
+    """Find a subscription doc by stripe_subscription_id and update it."""
+    docs = (
+        db.collection("subscriptions")
+        .where("stripe_subscription_id", "==", stripe_sub_id)
+        .limit(1)
+        .stream()
+    )
+    for doc in docs:
+        doc.reference.update(update_data)

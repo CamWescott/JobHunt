@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import ApplicationCreate, ApplicationUpdate, ApplicationResponse
 from app.utils.auth import get_current_user
-from app.services.supabase_client import get_supabase
+from app.services.firebase_client import get_db
 
 router = APIRouter()
 
@@ -19,7 +19,6 @@ async def create_application(
     app_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
-    supabase = get_supabase()
     data = {
         "id": app_id,
         "user_id": user["user_id"],
@@ -34,37 +33,37 @@ async def create_application(
         "updated_at": now,
     }
 
-    result = supabase.table("applications").insert(data).execute()
-    return result.data[0]
+    db = get_db()
+    db.collection("applications").document(app_id).set(data)
+
+    return data
 
 
 @router.get("/", response_model=list[ApplicationResponse])
 async def list_applications(user: dict = Depends(get_current_user)):
     """List all applications for the current user."""
-    supabase = get_supabase()
-    result = (
-        supabase.table("applications")
-        .select("*")
-        .eq("user_id", user["user_id"])
-        .order("updated_at", desc=True)
-        .execute()
+    db = get_db()
+    docs = (
+        db.collection("applications")
+        .where("user_id", "==", user["user_id"])
+        .order_by("updated_at", direction="DESCENDING")
+        .stream()
     )
-    return result.data
+    return [doc.to_dict() for doc in docs]
 
 
 @router.get("/stats")
 async def get_application_stats(user: dict = Depends(get_current_user)):
     """Get application statistics."""
-    supabase = get_supabase()
-    result = (
-        supabase.table("applications")
-        .select("status")
-        .eq("user_id", user["user_id"])
-        .execute()
+    db = get_db()
+    docs = (
+        db.collection("applications")
+        .where("user_id", "==", user["user_id"])
+        .stream()
     )
 
     stats = {
-        "total": len(result.data),
+        "total": 0,
         "saved": 0,
         "applied": 0,
         "phone_screen": 0,
@@ -73,8 +72,10 @@ async def get_application_stats(user: dict = Depends(get_current_user)):
         "rejected": 0,
         "withdrawn": 0,
     }
-    for app in result.data:
-        status = app["status"]
+    for doc in docs:
+        data = doc.to_dict()
+        stats["total"] += 1
+        status = data.get("status")
         if status in stats:
             stats[status] += 1
 
@@ -88,10 +89,20 @@ async def update_application(
     user: dict = Depends(get_current_user),
 ):
     """Update an application."""
-    supabase = get_supabase()
-    now = datetime.now(timezone.utc).isoformat()
+    db = get_db()
+    doc_ref = db.collection("applications").document(app_id)
+    doc = doc_ref.get()
 
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    existing = doc.to_dict()
+    if existing.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    now = datetime.now(timezone.utc).isoformat()
     update_data = {"updated_at": now}
+
     if request.company is not None:
         update_data["company"] = request.company
     if request.position is not None:
@@ -103,25 +114,20 @@ async def update_application(
     if request.notes is not None:
         update_data["notes"] = request.notes
 
-    result = (
-        supabase.table("applications")
-        .update(update_data)
-        .eq("id", app_id)
-        .eq("user_id", user["user_id"])
-        .execute()
-    )
+    doc_ref.update(update_data)
 
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    return result.data[0]
+    existing.update(update_data)
+    return existing
 
 
 @router.delete("/{app_id}")
 async def delete_application(app_id: str, user: dict = Depends(get_current_user)):
     """Delete an application."""
-    supabase = get_supabase()
-    supabase.table("applications").delete().eq("id", app_id).eq(
-        "user_id", user["user_id"]
-    ).execute()
+    db = get_db()
+    doc_ref = db.collection("applications").document(app_id)
+    doc = doc_ref.get()
+
+    if doc.exists and doc.to_dict().get("user_id") == user["user_id"]:
+        doc_ref.delete()
+
     return {"status": "deleted"}

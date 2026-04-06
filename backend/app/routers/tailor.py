@@ -9,7 +9,7 @@ from app.models.schemas import LinkedInOptimizeRequest, LinkedInOptimizeResponse
 from app.utils.auth import get_current_user
 from app.services.claude_service import tailor_resume, generate_interview_prep, optimize_linkedin
 from app.services.pdf_export import export_resume_to_pdf, export_cover_letter_to_pdf
-from app.services.supabase_client import get_supabase
+from app.services.firebase_client import get_db
 
 router = APIRouter()
 
@@ -18,32 +18,32 @@ FREE_TIER_LIMIT = 3
 
 async def check_usage(user: dict):
     """Check if user is within their usage limits."""
-    supabase = get_supabase()
+    db = get_db()
 
     # Check for active subscription
-    sub = (
-        supabase.table("subscriptions")
-        .select("*")
-        .eq("user_id", user["user_id"])
-        .eq("status", "active")
-        .execute()
+    subs = (
+        db.collection("subscriptions")
+        .where("user_id", "==", user["user_id"])
+        .where("status", "==", "active")
+        .limit(1)
+        .stream()
     )
-    if sub.data:
+    if any(True for _ in subs):
         return  # Pro user, unlimited
 
     # Count free tier usage this month
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
-    usage = (
-        supabase.table("tailor_results")
-        .select("id", count="exact")
-        .eq("user_id", user["user_id"])
-        .gte("created_at", month_start)
-        .execute()
+    usage_docs = (
+        db.collection("tailor_results")
+        .where("user_id", "==", user["user_id"])
+        .where("created_at", ">=", month_start)
+        .stream()
     )
+    usage_count = sum(1 for _ in usage_docs)
 
-    if usage.count and usage.count >= FREE_TIER_LIMIT:
+    if usage_count >= FREE_TIER_LIMIT:
         raise HTTPException(
             status_code=403,
             detail=f"Free tier limit reached ({FREE_TIER_LIMIT}/month). Upgrade to Pro for unlimited access.",
@@ -67,8 +67,8 @@ async def analyze_and_tailor(
     tailor_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
-    supabase = get_supabase()
-    supabase.table("tailor_results").insert(
+    db = get_db()
+    db.collection("tailor_results").document(tailor_id).set(
         {
             "id": tailor_id,
             "user_id": user["user_id"],
@@ -78,7 +78,7 @@ async def analyze_and_tailor(
             "result": result,
             "created_at": now,
         }
-    ).execute()
+    )
 
     return TailorResponse(
         id=tailor_id,
@@ -90,15 +90,22 @@ async def analyze_and_tailor(
 @router.get("/history", response_model=list[TailorResponse])
 async def get_tailor_history(user: dict = Depends(get_current_user)):
     """Get all tailor results for the current user."""
-    supabase = get_supabase()
-    result = (
-        supabase.table("tailor_results")
-        .select("id, result, created_at")
-        .eq("user_id", user["user_id"])
-        .order("created_at", desc=True)
-        .execute()
+    db = get_db()
+    docs = (
+        db.collection("tailor_results")
+        .where("user_id", "==", user["user_id"])
+        .order_by("created_at", direction="DESCENDING")
+        .stream()
     )
-    return result.data
+    results = []
+    for doc in docs:
+        d = doc.to_dict()
+        results.append({
+            "id": d["id"],
+            "result": d["result"],
+            "created_at": d["created_at"],
+        })
+    return results
 
 
 @router.post("/export/resume-pdf")
@@ -115,7 +122,7 @@ async def export_resume_pdf(request: TailorRequest, user: dict = Depends(get_cur
 @router.post("/export/cover-letter-pdf")
 async def export_cover_letter_pdf(request: TailorRequest, user: dict = Depends(get_current_user)):
     """Export a cover letter as PDF."""
-    pdf_bytes = export_cover_letter_to_pdf(request.job_description)  # job_description field reused for cover letter text
+    pdf_bytes = export_cover_letter_to_pdf(request.job_description)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
