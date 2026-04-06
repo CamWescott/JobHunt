@@ -1,15 +1,16 @@
 import io
-import fitz  # PyMuPDF
+from pypdf import PdfReader
 from docx import Document
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """Extract text from a PDF file."""
-    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    reader = PdfReader(io.BytesIO(file_bytes))
     text_parts = []
-    for page in doc:
-        text_parts.append(page.get_text())
-    doc.close()
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            text_parts.append(text)
     return "\n".join(text_parts).strip()
 
 
