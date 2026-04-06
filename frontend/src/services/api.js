@@ -24,11 +24,6 @@ async function request(path, options = {}) {
     throw new Error(error.detail || 'Request failed')
   }
 
-  // Handle PDF responses
-  const contentType = res.headers.get('content-type')
-  if (contentType && contentType.includes('application/pdf')) {
-    return res.blob()
-  }
 
   return res.json()
 }

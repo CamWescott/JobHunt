@@ -54,14 +54,22 @@ export default function TailorPage() {
     if (!result) return
     try {
       const text = type === 'resume' ? result.tailored_resume : result.cover_letter
-      const blob = type === 'resume'
+      const res = type === 'resume'
         ? await api.exportResumePdf({ resume_text: text, job_description: '' })
         : await api.exportCoverLetterPdf({ resume_text: '', job_description: text })
+
+      // Decode base64 PDF data
+      const byteString = atob(res.data)
+      const bytes = new Uint8Array(byteString.length)
+      for (let i = 0; i < byteString.length; i++) {
+        bytes[i] = byteString.charCodeAt(i)
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' })
 
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = type === 'resume' ? 'tailored_resume.pdf' : 'cover_letter.pdf'
+      a.download = res.filename
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
