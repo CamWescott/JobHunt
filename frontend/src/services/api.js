@@ -1,6 +1,6 @@
 import { auth } from './firebase'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 async function request(path, options = {}) {
   const headers = { ...options.headers }
