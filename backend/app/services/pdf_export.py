@@ -35,8 +35,7 @@ def export_resume_to_pdf(resume_text: str) -> bytes:
             pdf.cell(0, 10, safe, new_x="LMARGIN", new_y="NEXT", align="C")
         elif stripped.startswith(("\u2022", "-", "*", "\u00b7")):
             pdf.set_font("Helvetica", "", 10)
-            pdf.cell(5)
-            pdf.multi_cell(170, 5, "- " + _sanitize(stripped.lstrip("\u2022-* \u00b7")))
+            pdf.multi_cell(0, 5, "  - " + _sanitize(stripped.lstrip("\u2022-* \u00b7")))
         else:
             pdf.set_font("Helvetica", "", 10)
             pdf.multi_cell(0, 5, safe)
