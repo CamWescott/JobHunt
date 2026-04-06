@@ -21,6 +21,11 @@ class TailorRequest(BaseModel):
     template: Optional[str] = "classic"
 
 
+class SuggestedBullet(BaseModel):
+    category: str
+    bullet: str
+
+
 class TailorResult(BaseModel):
     tailored_resume: str
     cover_letter: str
@@ -28,6 +33,7 @@ class TailorResult(BaseModel):
     gaps: list[str]
     keywords_added: list[str]
     suggestions: list[str]
+    suggested_bullets: list[SuggestedBullet] = []
 
 
 class TailorResponse(BaseModel):

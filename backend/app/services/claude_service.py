@@ -28,6 +28,7 @@ Given this resume and job description, return a JSON object with these exact key
 - "gaps": list of strings — skills or experience in the JD the candidate is missing
 - "keywords_added": list of strings — keywords inserted into the tailored resume from the JD
 - "suggestions": list of 3-5 specific things the candidate could do to strengthen their application
+- "suggested_bullets": list of 8-12 objects, each with "category" (a section name like "Experience", "Skills", "Projects") and "bullet" (a powerful, metrics-driven resume bullet point the candidate could add based on the JD requirements and their background). These should be realistic bullets they could truthfully adopt or adapt, focusing on achievements and impact. Include a mix of bullets for different sections.
 
 RESUME:
 {resume_text}

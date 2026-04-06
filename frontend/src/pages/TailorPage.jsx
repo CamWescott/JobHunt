@@ -175,6 +175,7 @@ export default function TailorPage() {
               <div className="tabs">
                 <button className={`tab ${activeTab === 'resume' ? 'active' : ''}`} onClick={() => setActiveTab('resume')}>Tailored Resume</button>
                 <button className={`tab ${activeTab === 'cover' ? 'active' : ''}`} onClick={() => setActiveTab('cover')}>Cover Letter</button>
+                <button className={`tab ${activeTab === 'bullets' ? 'active' : ''}`} onClick={() => setActiveTab('bullets')}>Suggested Bullets</button>
                 <button className={`tab ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => setActiveTab('analysis')}>Analysis</button>
               </div>
 
@@ -241,6 +242,60 @@ export default function TailorPage() {
                     </div>
                   </div>
                   <div className="result-content">{result.cover_letter}</div>
+                </div>
+              )}
+
+              {activeTab === 'bullets' && (
+                <div className="result-section">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h3>Suggested Bullet Points</h3>
+                    <button className="copy-btn" onClick={() => copyToClipboard(
+                      (result.suggested_bullets || []).map(b => `[${b.category}] ${b.bullet}`).join('\n')
+                    )}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      Copy All
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
+                    AI-generated bullet points tailored to this job description. Copy the ones that fit your experience.
+                  </p>
+                  {(() => {
+                    const bullets = result.suggested_bullets || []
+                    const categories = [...new Set(bullets.map(b => b.category))]
+                    return categories.map(cat => (
+                      <div key={cat} style={{ marginBottom: 20 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 600, textTransform: 'uppercase',
+                          letterSpacing: '0.05em', color: 'var(--primary-light)',
+                          marginBottom: 8,
+                        }}>{cat}</div>
+                        {bullets.filter(b => b.category === cat).map((b, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex', alignItems: 'flex-start', gap: 8,
+                              padding: '10px 12px', marginBottom: 6,
+                              background: 'var(--bg)', border: '1px solid var(--border)',
+                              borderRadius: 'var(--radius-sm)', fontSize: 14,
+                              lineHeight: 1.5, color: 'var(--text-muted)',
+                            }}
+                          >
+                            <span style={{ flexShrink: 0, marginTop: 2 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            </span>
+                            <span style={{ flex: 1 }}>{b.bullet}</span>
+                            <button
+                              className="copy-btn"
+                              style={{ flexShrink: 0, padding: '2px 6px' }}
+                              onClick={() => copyToClipboard(b.bullet)}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  })()}
                 </div>
               )}
 
