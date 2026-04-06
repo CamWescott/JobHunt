@@ -113,21 +113,27 @@ async def get_tailor_history(user: dict = Depends(get_current_user)):
 @router.post("/export/resume-pdf")
 async def export_resume_pdf(request: TailorRequest, user: dict = Depends(get_current_user)):
     """Export a tailored resume as PDF (returns base64-encoded)."""
-    pdf_bytes = export_resume_to_pdf(request.resume_text)
-    return JSONResponse(content={
-        "data": base64.b64encode(pdf_bytes).decode("utf-8"),
-        "filename": "tailored_resume.pdf",
-    })
+    try:
+        pdf_bytes = export_resume_to_pdf(request.resume_text)
+        return JSONResponse(content={
+            "data": base64.b64encode(pdf_bytes).decode("utf-8"),
+            "filename": "tailored_resume.pdf",
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
 @router.post("/export/cover-letter-pdf")
 async def export_cover_letter_pdf(request: TailorRequest, user: dict = Depends(get_current_user)):
     """Export a cover letter as PDF (returns base64-encoded)."""
-    pdf_bytes = export_cover_letter_to_pdf(request.job_description)
-    return JSONResponse(content={
-        "data": base64.b64encode(pdf_bytes).decode("utf-8"),
-        "filename": "cover_letter.pdf",
-    })
+    try:
+        pdf_bytes = export_cover_letter_to_pdf(request.job_description)
+        return JSONResponse(content={
+            "data": base64.b64encode(pdf_bytes).decode("utf-8"),
+            "filename": "cover_letter.pdf",
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
 @router.post("/interview-prep", response_model=InterviewPrepResponse)

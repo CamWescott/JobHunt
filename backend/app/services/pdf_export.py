@@ -1,6 +1,11 @@
 from fpdf import FPDF
 
 
+def _sanitize(text: str) -> str:
+    """Remove characters that fpdf2 can't encode in latin-1."""
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
 def export_resume_to_pdf(resume_text: str) -> bytes:
     """Export tailored resume text to a clean PDF."""
     pdf = FPDF()
@@ -15,26 +20,26 @@ def export_resume_to_pdf(resume_text: str) -> bytes:
             pdf.ln(4)
             continue
 
+        safe = _sanitize(stripped)
+
         # Detect section headers (all caps or short bold-looking lines)
         if stripped.isupper() and len(stripped) < 60:
             pdf.ln(4)
             pdf.set_font("Helvetica", "B", 12)
-            pdf.cell(0, 7, stripped, new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 7, safe, new_x="LMARGIN", new_y="NEXT")
             pdf.set_draw_color(70, 130, 180)
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(2)
-        # Detect name (first non-empty line, likely the name)
         elif pdf.page_no() == 1 and pdf.get_y() < 30:
             pdf.set_font("Helvetica", "B", 16)
-            pdf.cell(0, 10, stripped, new_x="LMARGIN", new_y="NEXT", align="C")
-        # Bullet points
-        elif stripped.startswith(("•", "-", "*")):
+            pdf.cell(0, 10, safe, new_x="LMARGIN", new_y="NEXT", align="C")
+        elif stripped.startswith(("\u2022", "-", "*", "\u00b7")):
             pdf.set_font("Helvetica", "", 10)
             pdf.cell(5)
-            pdf.multi_cell(170, 5, stripped)
+            pdf.multi_cell(170, 5, "- " + _sanitize(stripped.lstrip("\u2022-* \u00b7")))
         else:
             pdf.set_font("Helvetica", "", 10)
-            pdf.multi_cell(0, 5, stripped)
+            pdf.multi_cell(0, 5, safe)
 
     return pdf.output()
 
@@ -52,6 +57,6 @@ def export_cover_letter_to_pdf(cover_letter: str) -> bytes:
         if not stripped:
             pdf.ln(6)
         else:
-            pdf.multi_cell(0, 6, stripped)
+            pdf.multi_cell(0, 6, _sanitize(stripped))
 
     return pdf.output()
