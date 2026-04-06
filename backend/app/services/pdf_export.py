@@ -11,6 +11,7 @@ def export_resume_to_pdf(resume_text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.set_font("Helvetica", "", 10)
 
     lines = resume_text.split("\n")
 
@@ -22,22 +23,15 @@ def export_resume_to_pdf(resume_text: str) -> bytes:
 
         safe = _sanitize(stripped)
 
-        # Detect section headers (all caps or short bold-looking lines)
         if stripped.isupper() and len(stripped) < 60:
             pdf.ln(4)
             pdf.set_font("Helvetica", "B", 12)
-            pdf.cell(0, 7, safe, new_x="LMARGIN", new_y="NEXT")
+            pdf.multi_cell(0, 7, safe)
             pdf.set_draw_color(70, 130, 180)
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(2)
-        elif pdf.page_no() == 1 and pdf.get_y() < 30:
-            pdf.set_font("Helvetica", "B", 16)
-            pdf.cell(0, 10, safe, new_x="LMARGIN", new_y="NEXT", align="C")
-        elif stripped.startswith(("\u2022", "-", "*", "\u00b7")):
             pdf.set_font("Helvetica", "", 10)
-            pdf.multi_cell(0, 5, "  - " + _sanitize(stripped.lstrip("\u2022-* \u00b7")))
         else:
-            pdf.set_font("Helvetica", "", 10)
             pdf.multi_cell(0, 5, safe)
 
     return pdf.output()
