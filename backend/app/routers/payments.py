@@ -104,7 +104,7 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
     return SubscriptionStatus(
         is_active=False,
         usage_count=usage_count,
-        usage_limit=3,
+        usage_limit=2,
     )
 
 

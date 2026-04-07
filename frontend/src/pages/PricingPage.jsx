@@ -39,7 +39,7 @@ export default function PricingPage() {
           <div className="price">$0</div>
           <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Get a taste of the platform</p>
           <ul>
-            <li>3 resume tailors per month</li>
+            <li>2 resume tailors per month</li>
             <li>Cover letter generation</li>
             <li>Match score analysis</li>
             <li>PDF export</li>

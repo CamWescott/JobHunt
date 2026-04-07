@@ -15,7 +15,7 @@ from app.services.firebase_client import get_db
 
 router = APIRouter()
 
-FREE_TIER_LIMIT = 999
+FREE_TIER_LIMIT = 2
 
 
 async def check_usage(user: dict):
