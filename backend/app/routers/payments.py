@@ -1,5 +1,5 @@
 import stripe
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -22,19 +22,22 @@ async def create_checkout_session(
     request: CreateCheckoutRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Create a Stripe checkout session."""
+    """Create a Stripe checkout session for subscription or one-time payment."""
     settings = get_settings()
     s = get_stripe()
+
+    mode = request.mode or ("payment" if request.price_id == "price_90day" else "subscription")
 
     try:
         session = s.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{"price": request.price_id, "quantity": 1}],
-            mode="subscription",
+            mode=mode,
             success_url=f"{settings.frontend_url}/dashboard?payment=success",
             cancel_url=f"{settings.frontend_url}/pricing?payment=cancelled",
             client_reference_id=user["user_id"],
             customer_email=user["email"],
+            metadata={"plan": "90day_blitz" if mode == "payment" else "pro"},
         )
         return {"checkout_url": session.url}
     except Exception as e:
@@ -58,13 +61,33 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
 
     if sub_list:
         s = sub_list[0]
-        return SubscriptionStatus(
-            is_active=True,
-            plan=s.get("plan", "pro"),
-            current_period_end=s.get("current_period_end"),
-            usage_count=0,
-            usage_limit=999999,
-        )
+        plan = s.get("plan", "pro")
+
+        # Check if 90-day pass has expired
+        if plan == "90day_blitz":
+            expires = s.get("current_period_end", "")
+            if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+                # Mark as expired
+                doc_id = s.get("doc_id", user["user_id"])
+                db.collection("subscriptions").document(doc_id).update({"status": "expired"})
+                # Fall through to free tier
+            else:
+                return SubscriptionStatus(
+                    is_active=True,
+                    plan="90day_blitz",
+                    current_period_end=expires,
+                    usage_count=0,
+                    usage_limit=999999,
+                )
+
+        else:
+            return SubscriptionStatus(
+                is_active=True,
+                plan=plan,
+                current_period_end=s.get("current_period_end"),
+                usage_count=0,
+                usage_limit=999999,
+            )
 
     # Free tier — count usage
     now = datetime.now(timezone.utc)
@@ -106,24 +129,41 @@ async def stripe_webhook(request: Request):
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         user_id = session.get("client_reference_id")
-        subscription_id = session.get("subscription")
+        plan = session.get("metadata", {}).get("plan", "pro")
 
-        if user_id and subscription_id:
-            sub = s.Subscription.retrieve(subscription_id)
-            # Use user_id as doc ID for easy upsert
+        if user_id and plan == "90day_blitz":
+            # One-time 90-day pass
+            expires = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
             db.collection("subscriptions").document(user_id).set(
                 {
                     "user_id": user_id,
-                    "stripe_subscription_id": subscription_id,
+                    "doc_id": user_id,
                     "stripe_customer_id": session.get("customer"),
+                    "stripe_payment_intent": session.get("payment_intent"),
                     "status": "active",
-                    "plan": "pro",
-                    "current_period_end": datetime.fromtimestamp(
-                        sub.current_period_end, tz=timezone.utc
-                    ).isoformat(),
+                    "plan": "90day_blitz",
+                    "current_period_end": expires,
                 },
                 merge=True,
             )
+        elif user_id:
+            subscription_id = session.get("subscription")
+            if subscription_id:
+                sub = s.Subscription.retrieve(subscription_id)
+                db.collection("subscriptions").document(user_id).set(
+                    {
+                        "user_id": user_id,
+                        "doc_id": user_id,
+                        "stripe_subscription_id": subscription_id,
+                        "stripe_customer_id": session.get("customer"),
+                        "status": "active",
+                        "plan": "pro",
+                        "current_period_end": datetime.fromtimestamp(
+                            sub.current_period_end, tz=timezone.utc
+                        ).isoformat(),
+                    },
+                    merge=True,
+                )
 
     elif event["type"] == "customer.subscription.deleted":
         sub = event["data"]["object"]

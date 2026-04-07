@@ -102,8 +102,15 @@ export default function Dashboard() {
         <div className="card" style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ color: 'var(--success)' }}>Pro Plan Active</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Unlimited tailoring, cover letters, and more</p>
+              <h3 style={{ color: 'var(--success)' }}>
+                {subscription.plan === '90day_blitz' ? '90-Day Blitz' : 'Job Search Pro'} Active
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                Unlimited tailoring, cover letters, and more
+                {subscription.plan === '90day_blitz' && subscription.current_period_end && (
+                  <span> — expires {new Date(subscription.current_period_end).toLocaleDateString()}</span>
+                )}
+              </p>
             </div>
             <span className="status-badge applied">Active</span>
           </div>

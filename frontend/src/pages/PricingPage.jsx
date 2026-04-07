@@ -5,13 +5,13 @@ import { api } from '../services/api'
 export default function PricingPage() {
   const { user } = useAuth()
 
-  const handleCheckout = async (priceId) => {
+  const handleCheckout = async (priceId, mode) => {
     if (!user) {
       window.location.href = '/login'
       return
     }
     try {
-      const res = await api.createCheckout({ price_id: priceId })
+      const res = await api.createCheckout({ price_id: priceId, mode })
       window.location.href = res.checkout_url
     } catch (err) {
       alert(err.message)
@@ -50,34 +50,35 @@ export default function PricingPage() {
         </div>
 
         <div className="pricing-card featured">
-          <h3>Pro</h3>
-          <div className="price">$19<span>/mo</span></div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Everything you need to land the job</p>
+          <h3>Job Search Pro</h3>
+          <div className="price">$29<span>/mo</span></div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Everything you need, cancel anytime</p>
           <ul>
             <li>Unlimited resume tailoring</li>
             <li>Unlimited cover letters</li>
             <li>Interview prep questions</li>
             <li>LinkedIn profile optimizer</li>
             <li>Application tracker</li>
-            <li>Priority AI processing</li>
+            <li>Suggested bullet points</li>
+            <li>All PDF templates</li>
           </ul>
-          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => handleCheckout('price_monthly')}>
-            Start Pro
+          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => handleCheckout('price_monthly', 'subscription')}>
+            Start Pro — $29/mo
           </button>
         </div>
 
         <div className="pricing-card">
-          <h3>Lifetime</h3>
-          <div className="price">$149</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>One payment, forever access</p>
+          <h3>90-Day Blitz</h3>
+          <div className="price">$49<span> once</span></div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>90 days of full access — no recurring charge</p>
           <ul>
             <li>Everything in Pro</li>
-            <li>Lifetime access</li>
-            <li>All future features</li>
-            <li>Priority support</li>
+            <li>90 days unlimited access</li>
+            <li>One-time payment</li>
+            <li>Perfect for active job searches</li>
           </ul>
-          <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => handleCheckout('price_lifetime')}>
-            Get Lifetime Access
+          <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => handleCheckout('price_90day', 'payment')}>
+            Get 90-Day Access — $49
           </button>
         </div>
       </div>

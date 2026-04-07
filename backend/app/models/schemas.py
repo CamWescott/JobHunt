@@ -88,6 +88,7 @@ class ApplicationResponse(BaseModel):
 # --- Payments ---
 class CreateCheckoutRequest(BaseModel):
     price_id: str
+    mode: Optional[str] = None  # "subscription" or "payment"
 
 
 class SubscriptionStatus(BaseModel):
