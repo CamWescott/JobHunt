@@ -185,6 +185,37 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 
+@router.post("/set-plan")
+async def set_plan(request: Request, user: dict = Depends(get_current_user)):
+    """DEV ONLY: Manually set the user's plan for testing."""
+    body = await request.json()
+    plan = body.get("plan", "free")
+    db = get_db()
+
+    if plan == "free":
+        # Delete subscription doc to revert to free
+        db.collection("subscriptions").document(user["user_id"]).delete()
+        return {"status": "ok", "plan": "free"}
+
+    expires = None
+    if plan == "90day_blitz":
+        expires = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
+    elif plan == "pro":
+        expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+
+    db.collection("subscriptions").document(user["user_id"]).set(
+        {
+            "user_id": user["user_id"],
+            "doc_id": user["user_id"],
+            "status": "active",
+            "plan": plan,
+            "current_period_end": expires,
+        },
+        merge=True,
+    )
+    return {"status": "ok", "plan": plan}
+
+
 def _update_subscription_by_stripe_id(db, stripe_sub_id: str, update_data: dict):
     """Find a subscription doc by stripe_subscription_id and update it."""
     docs = (

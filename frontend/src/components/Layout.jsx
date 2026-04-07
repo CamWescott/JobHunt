@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { api } from '../services/api'
 
 export default function Layout({ children }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [devOpen, setDevOpen] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState(null)
+  const [switching, setSwitching] = useState(false)
 
   const handleSignOut = () => {
     signOut()
@@ -46,6 +51,74 @@ export default function Layout({ children }) {
           </NavLink>
         </nav>
         <div className="sidebar-footer">
+          {/* Dev Tools Toggle */}
+          <div style={{ marginBottom: 10 }}>
+            <button
+              onClick={async () => {
+                if (!devOpen && currentPlan === null) {
+                  try {
+                    const sub = await api.getSubscriptionStatus()
+                    setCurrentPlan(sub.is_active ? sub.plan : 'free')
+                  } catch { setCurrentPlan('free') }
+                }
+                setDevOpen(!devOpen)
+              }}
+              style={{
+                width: '100%', padding: '6px 10px', fontSize: 12,
+                background: devOpen ? 'var(--primary)' : 'var(--bg-input)',
+                color: devOpen ? 'white' : 'var(--text-dim)',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Dev Tools
+            </button>
+            {devOpen && (
+              <div style={{
+                marginTop: 8, padding: 10, background: 'var(--bg)',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              }}>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Switch Plan</div>
+                {[
+                  { id: 'free', label: 'Free' },
+                  { id: 'pro', label: 'Job Search Pro' },
+                  { id: '90day_blitz', label: '90-Day Blitz' },
+                ].map(plan => (
+                  <button
+                    key={plan.id}
+                    disabled={switching}
+                    onClick={async () => {
+                      setSwitching(true)
+                      try {
+                        await api.setPlan(plan.id)
+                        setCurrentPlan(plan.id)
+                        window.location.reload()
+                      } catch (err) {
+                        alert('Failed: ' + err.message)
+                      } finally {
+                        setSwitching(false)
+                      }
+                    }}
+                    style={{
+                      display: 'block', width: '100%', padding: '7px 10px', marginBottom: 4,
+                      fontSize: 12, textAlign: 'left', cursor: switching ? 'wait' : 'pointer',
+                      background: currentPlan === plan.id ? 'var(--primary)' : 'var(--bg-input)',
+                      color: currentPlan === plan.id ? 'white' : 'var(--text)',
+                      border: currentPlan === plan.id ? '1px solid var(--primary-light)' : '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    {currentPlan === plan.id ? '● ' : '○ '}{plan.label}
+                  </button>
+                ))}
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 6 }}>
+                  Page will reload after switching
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="user-info">
             <div className="user-avatar">{initial}</div>
             <div style={{ flex: 1, overflow: 'hidden' }}>

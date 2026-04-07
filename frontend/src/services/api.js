@@ -63,4 +63,5 @@ export const api = {
   // Payments
   createCheckout: (data) => request('/payments/create-checkout', { method: 'POST', body: data }),
   getSubscriptionStatus: () => request('/payments/status'),
+  setPlan: (plan) => request('/payments/set-plan', { method: 'POST', body: { plan } }),
 }
