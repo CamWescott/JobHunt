@@ -125,9 +125,32 @@ export default function Layout({ children }) {
               <div style={{ fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
             </div>
           </div>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={handleSignOut}>
-            Sign Out
-          </button>
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSignOut}>
+              Sign Out
+            </button>
+            <button
+              className="btn btn-sm"
+              style={{ justifyContent: 'center', background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', fontSize: 11, padding: '4px 8px', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+              onClick={async () => {
+                if (!window.confirm('Are you sure you want to delete your account? This will permanently remove all your data including resumes, tailoring history, applications, and subscription. This cannot be undone.')) return
+                if (!window.confirm('This is irreversible. Type OK in the next prompt to confirm.')) return
+                try {
+                  await api.deleteAccount()
+                  await signOut()
+                  navigate('/')
+                } catch (err) {
+                  alert('Failed to delete account: ' + err.message)
+                }
+              }}
+            >
+              Delete
+            </button>
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', gap: 12, fontSize: 11 }}>
+            <a href="/privacy" style={{ color: 'var(--text-dim)' }}>Privacy</a>
+            <a href="/terms" style={{ color: 'var(--text-dim)' }}>Terms</a>
+          </div>
         </div>
       </aside>
       <main className="main-content">

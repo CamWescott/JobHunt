@@ -8,6 +8,8 @@ import ApplicationsPage from './pages/ApplicationsPage'
 import InterviewPrepPage from './pages/InterviewPrepPage'
 import LinkedInPage from './pages/LinkedInPage'
 import PricingPage from './pages/PricingPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }) {
@@ -23,6 +25,8 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route
         path="/dashboard"
         element={

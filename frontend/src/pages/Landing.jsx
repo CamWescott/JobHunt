@@ -70,7 +70,7 @@ export default function Landing() {
           cover letter, match score, and interview prep — all in seconds.
         </p>
         <div className="hero-cta">
-          <Link to="/login" className="btn btn-primary">Start Free — 3 Tailors/Month</Link>
+          <Link to="/login" className="btn btn-primary">Start Free — 2 Tailors/Month</Link>
           <Link to="/pricing" className="btn btn-secondary">View Pricing</Link>
         </div>
       </section>
@@ -87,6 +87,15 @@ export default function Landing() {
           ))}
         </div>
       </section>
+
+      <footer style={{ textAlign: 'center', padding: '40px 20px', borderTop: '1px solid var(--border)', marginTop: 60 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, fontSize: 14, color: 'var(--text-dim)' }}>
+          <Link to="/pricing" style={{ color: 'var(--text-dim)' }}>Pricing</Link>
+          <Link to="/privacy" style={{ color: 'var(--text-dim)' }}>Privacy Policy</Link>
+          <Link to="/terms" style={{ color: 'var(--text-dim)' }}>Terms of Service</Link>
+        </div>
+        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-dim)' }}>CareerPilot {new Date().getFullYear()}</p>
+      </footer>
     </div>
   )
 }

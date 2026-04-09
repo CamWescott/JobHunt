@@ -31,6 +31,7 @@ async function request(path, options = {}) {
 export const api = {
   // Auth (verify token with backend)
   getMe: () => request('/auth/me'),
+  deleteAccount: () => request('/auth/delete-account', { method: 'DELETE' }),
 
   // Resume
   uploadResume: (file) => {
